@@ -1,33 +1,31 @@
 import React, { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  //Sample data for front end dashboard page
+  //Sample data
   const expenses = [
     { category: "Food & Dining", amount: 13000, color: "#ef4444" },
-    { category: "Cars/Bikes", amount: 700000, color: "#22c55e" },
+    { category: "Cars/Bikes", amount: 70000, color: "#22c55e" },
     { category: "Entertainment", amount: 50000, color: "#3b82f6" },
     { category: "Utilities", amount: 7000, color: "#a855f7" },
-    { category: "Crypto", amount: 13000, color: "#84cc16" },
-    { category: "Groceries", amount: 5000, color: "#6366f1" },
-
+    { category: "Crypto", amount: 13000, color: "#facc15" },
+    { category: "Groceries", amount: 5000, color: "#ec4899" },
   ];
 
   const income = [
     { source: "Business", amount: 7000000, date: "Nov 1, 2025" },
-    { source: "Crypto", amount: 42350, date: "Nov 2, 2025" },
-    { source: "Rentals", amount: 30000, date: "Nov 2, 2025" },
-    { source: "Haters tax", amount: 11000, date: "Nov 2, 2025" },
-    { source: "Money Owed By People", amount: 15000, date: "Nov 2, 2025" },
+    { source: "Crypto", amount: 42350, date: "Nov 3, 2025" },
+    { source: "Rentals", amount: 30000, date: "Nov 7, 2025" },
+    { source: "Social Media", amount: 120000, date: "Nov 15, 2025" },
+    { source: "Haters Tax", amount: 21000, date: "Nov 1, 2025" },
   ];
 
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const totalIncome = income.reduce((sum, i) => sum + i.amount, 0);
 
   //Editable Budget
-  const [budget, setBudget] = useState(100000);    //default
-  const [draftBudget, setDraftBudget] = useState("100000"); //for the input field
+  const [budget, setBudget] = useState(150000);
+  const [draftBudget, setDraftBudget] = useState("150000");
 
-  //Load from localStorage once on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem("set_budget");
@@ -41,16 +39,15 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
-  //Save whenever budget changes
   useEffect(() => {
     try {
       localStorage.setItem("set_budget", String(budget));
     } catch {}
   }, [budget]);
 
-  //Guard divide-by-zero and negatives
   const safeBudget = Math.max(0, Number(budget) || 0);
-  const budgetUsedPct = safeBudget === 0 ? 0 : Math.min(100, (totalExpenses / safeBudget) * 100);
+  const budgetUsedPct =
+    safeBudget === 0 ? 0 : Math.min(100, (totalExpenses / safeBudget) * 100);
   const remaining = Math.max(0, safeBudget - totalExpenses);
 
   //Styling
@@ -89,7 +86,13 @@ export default function Dashboard() {
     padding: "16px",
   };
 
-  const inputRow = { display: "flex", gap: "8px", alignItems: "center", marginTop: "10px" };
+  const inputRow = {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+    marginTop: "10px",
+  };
+
   const inputStyle = {
     background: "rgba(255,255,255,0.1)",
     border: "1px solid rgba(255,255,255,0.2)",
@@ -98,6 +101,7 @@ export default function Dashboard() {
     borderRadius: "8px",
     width: "140px",
   };
+
   const btnStyle = {
     background: "#3b82f6",
     color: "white",
@@ -106,15 +110,18 @@ export default function Dashboard() {
     borderRadius: "8px",
     cursor: "pointer",
   };
+
   const smallMuted = { fontSize: "12px", opacity: 0.7 };
 
+  //Component
   return (
     <div style={containerStyle}>
-      <h1 style={{ fontSize: "28px", marginBottom: "8px" }}>Smart Expense Tracker (S.E.T)</h1>
-      <p style={{ fontSize: "14px", opacity: 0.8, marginTop: "-4px", marginBottom: "24px" }}>
-  Track smarter. Spend wiser.
-</p>
-      <p style={{ opacity: 0.7, marginBottom: "24px" }}>Your financial overview at a glance</p>
+      <h1 style={{ fontSize: "28px", marginBottom: "4px" }}>
+        Smart Expense Tracker
+      </h1>
+      <p style={{ opacity: 0.7, marginBottom: "24px" }}>
+        Track smarter. Spend wiser.
+      </p>
 
       {/*Summary Cards*/}
       <div style={grid3}>
@@ -197,7 +204,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/*Budget Section*/}
+      {/*Budget Section (Editable)*/}
       <div
         style={{
           ...card,
@@ -209,9 +216,11 @@ export default function Dashboard() {
         <h3>Monthly Budget</h3>
         <p style={smallMuted}>Track your spending against your budget</p>
 
-        {/*Editable option*/}
+        {/* Editable row */}
         <div style={inputRow}>
-          <label htmlFor="budget" style={{ fontSize: "14px" }}>Set Budget ($):</label>
+          <label htmlFor="budget" style={{ fontSize: "14px" }}>
+            Set Budget ($):
+          </label>
           <input
             id="budget"
             type="number"
@@ -219,7 +228,7 @@ export default function Dashboard() {
             value={draftBudget}
             onChange={(e) => setDraftBudget(e.target.value)}
             style={inputStyle}
-            placeholder="e.g., 4000"
+            placeholder="e.g., 150000"
           />
           <button
             style={btnStyle}
@@ -234,8 +243,8 @@ export default function Dashboard() {
           <button
             style={{ ...btnStyle, background: "rgba(255,255,255,0.15)" }}
             onClick={() => {
-              setBudget(4000);
-              setDraftBudget("4000");
+              setBudget(150000);
+              setDraftBudget("150000");
             }}
           >
             Reset
