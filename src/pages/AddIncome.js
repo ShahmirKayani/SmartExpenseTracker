@@ -1,273 +1,564 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function AddIncome() {
-  //Array to store multiple income entries
-  const [incomes, setIncomes] = useState([
-    { amount: "", source: "", date: new Date().toISOString().split("T")[0], description: "" },
+  const navigate = useNavigate();
+
+  // read username for greeting
+  const username = localStorage.getItem("username") || "User";
+
+  const createEmptyIncome = () => ({
+    amount: "",
+    source: "",
+    date: new Date().toISOString().split("T")[0],
+    description: "",
+  });
+
+  const [incomes, setIncomes] = useState([]);
+  const [formData, setFormData] = useState(createEmptyIncome());
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState("");
+
+  const [sources, setSources] = useState([
+    "Salary",
+    "Part-Time",
+    "Freelance",
+    "Business",
+    "Investment",
+    "Gift",
+    "Other",
   ]);
 
-  //Handle input field changes
-  const handleChange = (index, field, value) => {
-    const updated = [...incomes];
-    updated[index][field] = value;
-    setIncomes(updated);
+  const [customSource, setCustomSource] = useState("");
+  const [isAddingSource, setIsAddingSource] = useState(false);
+
+  // Load incomes from storage
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("incomes")) || [];
+    setIncomes(stored);
+  }, []);
+
+  const totalIncome = incomes.reduce(
+    (sum, inc) => sum + (Number(inc.amount) || 0),
+    0
+  );
+
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: undefined,
+    }));
+
+    setMessage("");
   };
 
-  //Add new blank income entry
-  const handleAddNew = () => {
-    const last = incomes[incomes.length - 1];
-    if (!last.amount || !last.source) {
-      alert("Please complete the current entry before adding another.");
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      newErrors.amount = "Amount must be greater than 0";
+    }
+    if (!formData.source) {
+      newErrors.source = "Source is required";
+    }
+    return newErrors;
+  };
+
+  const handleAddSource = () => {
+    if (!customSource.trim()) {
+      alert("Please enter a source name.");
       return;
     }
 
-    setIncomes([
-      ...incomes,
-      { amount: "", source: "", date: new Date().toISOString().split("T")[0], description: "" },
-    ]);
+    const src = customSource.trim();
+    if (!sources.includes(src)) {
+      setSources([...sources, src]);
+    }
+
+    setFormData((prev) => ({ ...prev, source: src }));
+
+    setCustomSource("");
+    setIsAddingSource(false);
   };
 
-  //Save all incomes
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    //Check for incomplete entries
-    const incomplete = incomes.some((inc) => !inc.amount || !inc.source);
-    if (incomplete) {
-      alert("Please fill in all required fields before submitting.");
+    const newErrors = validate();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    //Get existing incomes from localStorage
-    const storedIncomes = JSON.parse(localStorage.getItem("incomes")) || [];
+    let updatedIncomes;
+    if (editingIndex === null) {
+      updatedIncomes = [...incomes, formData];
+      setMessage("✅ Income added successfully!");
+    } else {
+      updatedIncomes = incomes.map((inc, idx) =>
+        idx === editingIndex ? formData : inc
+      );
+      setMessage("✅ Income updated successfully!");
+    }
 
-    //Save all incomes
-    localStorage.setItem("incomes", JSON.stringify([...storedIncomes, ...incomes]));
+    setIncomes(updatedIncomes);
+    localStorage.setItem("incomes", JSON.stringify(updatedIncomes));
 
-    alert("✅ All income entries added successfully!");
+    setFormData(createEmptyIncome());
+    setEditingIndex(null);
+    setErrors({});
 
-    //Reset form
-    setIncomes([
-      { amount: "", source: "", date: new Date().toISOString().split("T")[0], description: "" },
-    ]);
+    // Sync dashboard
+    window.dispatchEvent(new Event("storage"));
+
+    setIsAddingSource(false);
+    setCustomSource("");
   };
 
-  //Styling
+  const handleEdit = (index) => {
+    setFormData(incomes[index]);
+    setEditingIndex(index);
+    setErrors({});
+    setMessage("");
+    setIsAddingSource(false);
+    setCustomSource("");
+  };
+
+  const handleDelete = (index) => {
+    const updated = incomes.filter((_, i) => i !== index);
+    setIncomes(updated);
+    localStorage.setItem("incomes", JSON.stringify(updated));
+
+    setMessage("🗑️ Income deleted.");
+
+    if (editingIndex === index) {
+      setFormData(createEmptyIncome());
+      setEditingIndex(null);
+      setErrors({});
+    }
+
+    window.dispatchEvent(new Event("storage"));
+  };
+
+  // ========== UI STYLES (UNCHANGED) ==========
   const page = {
     minHeight: "100vh",
-    backgroundColor: "#0a0a23",
+    background:
+      "radial-gradient(circle at top left, #1e293b 0, #020617 40%, #000 100%)",
     color: "white",
+    display: "flex",
+    justifyContent: "center",
+    padding: "28px",
+    fontFamily:
+      'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+  };
+
+  const shell = {
+    width: "100%",
+    maxWidth: "1100px",
+  };
+
+  const header = {
+    marginBottom: "20px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  };
+
+  const brand = {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    fontSize: "24px",
+    fontWeight: 700,
+  };
+
+  const glowIcon = {
+    width: "46px",
+    height: "46px",
+    borderRadius: "16px",
+    background:
+      "conic-gradient(from 210deg, #22c55e, #0ea5e9, #6366f1, #22c55e)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "24px",
-    fontFamily: "Arial, sans-serif",
+    boxShadow: "0 0 40px rgba(59,130,246,0.45)",
+    fontSize: "22px",
+  };
+
+  const badge = {
+    fontSize: "12px",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    border: "1px solid rgba(148,163,184,0.7)",
+  };
+
+  const greeting = {
+    fontSize: "14px",
+    opacity: 0.85,
+    marginTop: "4px",
   };
 
   const card = {
     width: "100%",
-    maxWidth: "600px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "14px",
-    padding: "24px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
-    overflow: "visible",
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.96), rgba(15,23,42,0.9))",
+    borderRadius: "24px",
+    border: "1px solid rgba(148,163,184,0.4)",
+    padding: "22px",
+    boxShadow: "0 30px 80px rgba(15,23,42,0.9)",
+    backdropFilter: "blur(16px)",
   };
 
-  const heading = {
-    fontSize: "26px",
-    marginBottom: "10px",
-    display: "flex",
-    justifyContent: "center",
-    gap: "8px",
-    alignItems: "center",
-  };
-
-  const form = {
+  const summaryRow = {
     display: "grid",
-    gap: "25px",
-    marginTop: "20px",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "10px",
+    marginBottom: "18px",
   };
 
-  const label = {
-    fontSize: "14px",
-    opacity: 0.8,
-    marginBottom: "4px",
-    minWidth: "90px",
-  };
-
-  const input = {
-    background: "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255,255,255,0.2)",
-    color: "white",
+  const pillCard = {
+    borderRadius: "14px",
+    border: "1px solid rgba(148,163,184,0.35)",
+    background:
+      "radial-gradient(circle at top left, rgba(148,163,184,0.22), transparent 55%)",
     padding: "10px 12px",
-    borderRadius: "10px",
-    outline: "none",
-    marginLeft: "20px",
-    flex: 1,
+    fontSize: "12px",
   };
 
-  const button = {
-    background: "#10b981", //green for income
-    color: "white",
-    border: "none",
-    padding: "10px",
-    borderRadius: "10px",
-    fontWeight: 700,
-    cursor: "pointer",
-    width: "100%",
-    marginTop: "10px",
+  const pillLabel = { opacity: 0.7 };
+  const pillValue = { fontSize: "16px", fontWeight: 600 };
+
+  const heading = { fontSize: "18px", marginTop: "4px" };
+  const subheading = { fontSize: "12px", opacity: 0.8 };
+
+  const listItem = {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.95))",
+    padding: "9px 11px",
+    borderRadius: "12px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "8px",
+    border: "1px solid rgba(148,163,184,0.4)",
+    fontSize: "13px",
   };
 
-  const addBtn = {
-    background: "#2563eb", //blue add another
-    color: "white",
-    border: "none",
-    padding: "8px 12px",
+  const incomeAmount = { fontWeight: 600, fontSize: "14px" };
+
+  const incomeSourceChip = {
+    fontSize: "11px",
+    padding: "3px 8px",
+    borderRadius: "999px",
+    background:
+      "radial-gradient(circle at top left, rgba(52,211,153,0.25), rgba(22,163,74,0.7))",
+    border: "1px solid rgba(34,197,94,0.7)",
+  };
+
+  const actionsInline = { display: "flex", gap: "6px" };
+
+  const editBtn = {
+    background: "rgba(15,23,42,0.9)",
+    border: "1px solid rgba(52,211,153,0.8)",
+    color: "rgba(187,247,208,1)",
     borderRadius: "8px",
-    fontWeight: 600,
+    padding: "4px 9px",
     cursor: "pointer",
-    marginTop: "8px",
+    fontSize: "11px",
   };
+
+  const deleteBtn = {
+    background: "rgba(30, 64, 175, 0.15)",
+    border: "1px solid rgba(248,113,113,0.8)",
+    color: "#fb7185",
+    borderRadius: "8px",
+    padding: "4px 9px",
+    cursor: "pointer",
+    fontSize: "11px",
+  };
+
+  const formWrapper = {
+    marginTop: "16px",
+    borderTop: "1px dashed rgba(148,163,184,0.4)",
+    paddingTop: "14px",
+  };
+
+  const formStyles = { display: "grid", gap: "14px" };
 
   const formGroup = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    position: "relative",
-    overflow: "visible",
-    zIndex: 2,
-    marginBottom: "14px",
+    gap: "10px",
   };
 
-  const summaryLine = {
-    background: "rgba(255,255,255,0.08)",
-    padding: "10px 12px",
-    borderRadius: "8px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "14px",
-    marginBottom: "10px",
-  };
+  const label = { fontSize: "13px", opacity: 0.9 };
 
-  const editBtn = {
-    background: "none",
-    border: "1px solid rgba(255,255,255,0.3)",
+  const inputStyle = (err) => ({
+    background: "rgba(15,23,42,0.85)",
+    border: `1px solid ${err ? "#fb7185" : "rgba(148,163,184,0.6)"}`,
     color: "white",
-    borderRadius: "6px",
-    padding: "3px 8px",
+    padding: "9px 11px",
+    borderRadius: "10px",
+    flex: 1,
+    outline: "none",
+  });
+
+  const selectStyle = {
+    ...inputStyle(false),
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(22,163,74,0.9))",
+    appearance: "none",
+    zIndex: 9999,
+  };
+
+  const primaryButton = {
+    background:
+      "linear-gradient(135deg, #22c55e, #4ade80, #a3e635)",
+    color: "black",
+    border: "none",
+    padding: "10px",
+    borderRadius: "12px",
+    fontWeight: 650,
     cursor: "pointer",
-    fontSize: "12px",
+    width: "100%",
+    fontSize: "14px",
+    marginTop: "6px",
+    boxShadow: "0 10px 25px rgba(22,163,74,0.4)",
   };
 
-  //Edit an existing collapsed income
-  const handleEdit = (index) => {
-    const updated = [...incomes];
-    const current = updated[index];
-    //Move the selected one to the end to edit again
-    updated.splice(index, 1);
-    setIncomes([...updated, current]);
+  const messageStyle = {
+    fontSize: "13px",
+    color: "#4ade80",
+    textAlign: "center",
+    marginTop: "8px",
   };
 
-  //Component
+  const footerHint = {
+    fontSize: "10px",
+    opacity: 0.6,
+    textAlign: "right",
+    marginTop: "10px",
+  };
+
+  // =====================================
+  // RENDER
+  // =====================================
   return (
     <div style={page}>
-      <div style={card}>
-        <h2 style={heading}>💵 Add Income</h2>
+      <div style={shell}>
 
-        <form onSubmit={handleSubmit} style={form}>
-          {/*Show all completed incomes as summary lines*/}
-          {incomes.slice(0, incomes.length - 1).map((income, index) => (
-            <div key={index} style={summaryLine}>
-              <span>
-                💰 ${income.amount} — {income.source} ({income.date})
-              </span>
-              <button type="button" style={editBtn} onClick={() => handleEdit(index)}>
-                Edit
-              </button>
+        {/* Header */}
+        <div style={header}>
+
+          <div>
+            <div style={brand}>
+              <div style={glowIcon}>💰</div>
+              Smart Expense Tracker
             </div>
-          ))}
+            <div style={greeting}>Hi, {username}! 👋</div>
+          </div>
 
-          {/*Show the last (current) editable income*/}
-          {incomes.length > 0 && (
-            <div
-              style={{
-                borderBottom: "1px solid rgba(255,255,255,0.1)",
-                paddingBottom: "20px",
-                marginBottom: "20px",
-              }}
-            >
-              {/*Amount*/}
+          <div style={badge}>
+            Income · {new Date().toLocaleDateString()}
+          </div>
+        </div>
+
+        {/* Back to Dashboard */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            marginBottom: "14px",
+            background: "rgba(255,255,255,0.1)",
+            color: "white",
+            padding: "8px 12px",
+            border: "1px solid rgba(148,163,184,0.4)",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontSize: "13px",
+            backdropFilter: "blur(6px)",
+          }}
+        >
+          ← Back to Dashboard
+        </button>
+
+        {/* Main Card */}
+        <div style={card}>
+          <div style={summaryRow}>
+            <div style={pillCard}>
+              <div style={pillLabel}>Total Income</div>
+              <div style={pillValue}>${totalIncome.toFixed(2)}</div>
+            </div>
+
+            <div style={pillCard}>
+              <div style={pillLabel}>Entries</div>
+              <div style={pillValue}>{incomes.length}</div>
+            </div>
+
+            <div style={pillCard}>
+              <div style={pillLabel}>Mode</div>
+              <div style={pillValue}>
+                {editingIndex === null ? "Add" : "Edit"}
+              </div>
+            </div>
+          </div>
+
+          <div style={heading}>💵 Income</div>
+          <p style={subheading}>
+            Record your income streams. Everything updates your dashboard automatically.
+          </p>
+
+          {/* LIST */}
+          {incomes.length > 0 &&
+            incomes.map((income, index) => (
+              <div key={index} style={listItem}>
+                <div>
+                  <div style={incomeAmount}>
+                    +${Number(income.amount).toFixed(2)}{" "}
+                    <span style={incomeSourceChip}>{income.source}</span>
+                  </div>
+                  <div style={{ opacity: 0.75, fontSize: "11px" }}>
+                    {income.date}
+                    {income.description ? ` • ${income.description}` : ""}
+                  </div>
+                </div>
+
+                <div style={actionsInline}>
+                  <button
+                    style={editBtn}
+                    onClick={() => handleEdit(index)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    style={deleteBtn}
+                    onClick={() => handleDelete(index)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+
+          {/* FORM */}
+          <div style={formWrapper}>
+            <form onSubmit={handleSubmit} style={formStyles}>
+              {/* Amount */}
               <div style={formGroup}>
                 <label style={label}>Amount *</label>
                 <input
                   type="number"
                   placeholder="0.00"
-                  value={incomes[incomes.length - 1].amount}
-                  onChange={(e) =>
-                    handleChange(incomes.length - 1, "amount", e.target.value)
-                  }
-                  required
-                  style={input}
+                  value={formData.amount}
+                  onChange={(e) => handleChange("amount", e.target.value)}
+                  style={inputStyle(errors.amount)}
                 />
               </div>
 
-              {/*Source*/}
+              {/* Source */}
               <div style={formGroup}>
                 <label style={label}>Source *</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Salary, Freelance, Investment"
-                  value={incomes[incomes.length - 1].source}
-                  onChange={(e) =>
-                    handleChange(incomes.length - 1, "source", e.target.value)
-                  }
-                  required
-                  style={input}
-                />
+
+                {!isAddingSource ? (
+                  <select
+                    value={formData.source}
+                    onChange={(e) => {
+                      if (e.target.value === "add_new") {
+                        setIsAddingSource(true);
+                      } else {
+                        handleChange("source", e.target.value);
+                      }
+                    }}
+                    style={selectStyle}
+                    required
+                  >
+                    <option value="">Select a source</option>
+                    {sources.map((src) => (
+                      <option key={src} value={src}>
+                        {src}
+                      </option>
+                    ))}
+                    <option value="add_new">➕ Add Custom Source</option>
+                  </select>
+                ) : (
+                  <div style={{ display: "flex", gap: "10px", flex: 1 }}>
+                    <input
+                      type="text"
+                      placeholder="New source"
+                      value={customSource}
+                      onChange={(e) =>
+                        setCustomSource(e.target.value)
+                      }
+                      style={inputStyle(false)}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddSource}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #22c55e, #16a34a)",
+                        border: "none",
+                        padding: "8px 12px",
+                        color: "white",
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontSize: "12px",
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/*Date*/}
+              {/* Date */}
               <div style={formGroup}>
                 <label style={label}>Date</label>
                 <input
                   type="date"
-                  value={incomes[incomes.length - 1].date}
+                  value={formData.date}
                   onChange={(e) =>
-                    handleChange(incomes.length - 1, "date", e.target.value)
+                    handleChange("date", e.target.value)
                   }
-                  style={input}
+                  style={inputStyle(false)}
                 />
               </div>
 
-              {/*Description*/}
+              {/* Description */}
               <div style={formGroup}>
                 <label style={label}>Description</label>
                 <input
                   type="text"
-                  placeholder="Optional"
-                  value={incomes[incomes.length - 1].description}
+                  placeholder="Optional note"
+                  value={formData.description}
                   onChange={(e) =>
-                    handleChange(incomes.length - 1, "description", e.target.value)
+                    handleChange("description", e.target.value)
                   }
-                  style={input}
+                  style={inputStyle(false)}
                 />
               </div>
-            </div>
-          )}
 
-          {/*Add another source*/}
-          <button type="button" onClick={handleAddNew} style={addBtn}>
-            + Add Another Source
-          </button>
+              <button type="submit" style={primaryButton}>
+                {editingIndex === null
+                  ? "Save Income"
+                  : "Update Income"}
+              </button>
+            </form>
 
-          {/*Save all*/}
-          <button type="submit" style={button}>
-            Save All Incomes
-          </button>
-        </form>
+            {message && <p style={messageStyle}>{message}</p>}
+          </div>
+
+          <div style={footerHint}>
+            Stored locally • Auto-syncs with dashboard
+          </div>
+        </div>
       </div>
     </div>
   );

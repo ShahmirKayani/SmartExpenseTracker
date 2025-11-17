@@ -1,355 +1,345 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function SetBudget() {
-  //Array to store multiple budgets
-  const [budgets, setBudgets] = useState([
-    { category: "", amount: "", period: "Monthly", description: "" },
-  ]);
+  const navigate = useNavigate();
 
-  //Default categories + dynamic addition
-  const [categories, setCategories] = useState([
-    "Food",
-    "Transport",
-    "Entertainment",
-    "Shopping",
-    "Bills",
-    "Healthcare",
-    "Other",
-  ]);
+  // Greeting username
+  const username = localStorage.getItem("username") || "User";
 
-  //State for custom category input
-  const [customCategory, setCustomCategory] = useState("");
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  // Budget state
+  const [budget, setBudget] = useState({
+    monthlyLimit: "",
+    warningPercent: 80,
+    note: "",
+  });
 
-  //Handle input field changes
-  const handleChange = (index, field, value) => {
-    const updated = [...budgets];
-    updated[index][field] = value;
-    setBudgets(updated);
+  const [message, setMessage] = useState("");
+
+  // Load saved settings
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("budgetSettings"));
+    if (stored) setBudget(stored);
+  }, []);
+
+  const handleChange = (field, value) => {
+    setBudget((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setMessage("");
   };
 
-  //Add new blank budget entry
-  const handleAddNew = () => {
-    const last = budgets[budgets.length - 1];
-    if (!last.amount || !last.category) {
-      alert("Please complete the current entry before adding another.");
-      return;
-    }
-
-    setBudgets([
-      ...budgets,
-      { category: "", amount: "", period: "Monthly", description: "" },
-    ]);
-  };
-
-  //Save all budgets
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    //Check for incomplete entries
-    const incomplete = budgets.some((b) => !b.amount || !b.category);
-    if (incomplete) {
-      alert("Please fill in all required fields before submitting.");
+    if (!budget.monthlyLimit || Number(budget.monthlyLimit) <= 0) {
+      alert("Please enter a valid monthly budget.");
       return;
     }
 
-    //Get existing budgets from localStorage
-    const storedBudgets = JSON.parse(localStorage.getItem("budgets")) || [];
+    localStorage.setItem("budgetSettings", JSON.stringify(budget));
+    setMessage("✅ Budget settings saved successfully!");
 
-    //Save all budgets
-    localStorage.setItem("budgets", JSON.stringify([...storedBudgets, ...budgets]));
-
-    alert("✅ All budgets saved successfully!");
-
-    //Reset form
-    setBudgets([{ category: "", amount: "", period: "Monthly", description: "" }]);
+    // Sync dashboard
+    window.dispatchEvent(new Event("storage"));
   };
 
-  //Add a new custom category
-  const handleAddCategory = () => {
-    if (!customCategory.trim()) {
-      alert("Please enter a category name.");
-      return;
-    }
-    const newCat = customCategory.trim();
-    if (!categories.includes(newCat)) {
-      setCategories([...categories, newCat]);
-    }
-    const lastIndex = budgets.length - 1;
-    handleChange(lastIndex, "category", newCat);
-    setCustomCategory("");
-    setIsAddingCategory(false);
-  };
-
-  //Edit a collapsed budget
-  const handleEdit = (index) => {
-    const updated = [...budgets];
-    const current = updated[index];
-    updated.splice(index, 1);
-    setBudgets([...updated, current]);
-  };
-
-  //Styling
+  // ========= UI STYLE (unchanged) ==========
   const page = {
     minHeight: "100vh",
-    backgroundColor: "#0a0a23",
+    background:
+      "radial-gradient(circle at top left, #1e293b 0, #020617 40%, #000 100%)",
     color: "white",
+    display: "flex",
+    justifyContent: "center",
+    padding: "28px",
+    fontFamily:
+      'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+  };
+
+  const shell = {
+    width: "100%",
+    maxWidth: "900px",
+  };
+
+  const header = {
+    marginBottom: "20px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  };
+
+  const brand = {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    fontSize: "24px",
+    fontWeight: 700,
+  };
+
+  const glowIcon = {
+    width: "46px",
+    height: "46px",
+    borderRadius: "16px",
+    background:
+      "conic-gradient(from 210deg, #f97316, #eab308, #22c55e, #f97316)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "24px",
-    fontFamily: "Arial, sans-serif",
+    boxShadow: "0 0 40px rgba(249,115,22,0.45)",
+    fontSize: "22px",
+  };
+
+  const badge = {
+    fontSize: "12px",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    border: "1px solid rgba(148,163,184,0.7)",
+  };
+
+  const greeting = {
+    fontSize: "14px",
+    opacity: 0.85,
+    marginTop: "4px",
   };
 
   const card = {
     width: "100%",
-    maxWidth: "600px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "14px",
-    padding: "24px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
-    overflow: "visible",
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.97), rgba(15,23,42,0.9))",
+    borderRadius: "24px",
+    border: "1px solid rgba(148,163,184,0.4)",
+    padding: "22px 22px 18px",
+    boxShadow:
+      "0 30px 80px rgba(15,23,42,0.9), 0 0 0 1px rgba(15,23,42,0.8)",
+    backdropFilter: "blur(16px)",
   };
 
   const heading = {
-    fontSize: "26px",
-    marginBottom: "10px",
-    display: "flex",
-    justifyContent: "center",
-    gap: "8px",
-    alignItems: "center",
-  };
-
-  const form = {
-    display: "grid",
-    gap: "25px",
-    marginTop: "20px",
-  };
-
-  const label = {
-    fontSize: "14px",
-    opacity: 0.8,
+    fontSize: "18px",
     marginBottom: "4px",
-    minWidth: "90px",
   };
 
-  const input = {
-    background: "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255,255,255,0.2)",
-    color: "white",
+  const subheading = {
+    fontSize: "12px",
+    opacity: 0.8,
+  };
+
+  const pillRow = {
+    display: "flex",
+    gap: "10px",
+    marginTop: "14px",
+    marginBottom: "12px",
+    flexWrap: "wrap",
+  };
+
+  const pill = {
+    borderRadius: "14px",
+    border: "1px solid rgba(148,163,184,0.35)",
     padding: "10px 12px",
-    borderRadius: "10px",
-    outline: "none",
-    marginLeft: "20px",
-    flex: 1,
+    fontSize: "12px",
+    background:
+      "radial-gradient(circle at top left, rgba(234,179,8,0.18), transparent 55%)",
   };
 
-  const select = {
-    ...input,
-    backgroundColor: "rgba(40,40,60,1)",
-    color: "white",
-    marginLeft: "20px",
-    flex: 1,
-    zIndex: 1000,
-    appearance: "none",
-  };
+  const pillLabel = { opacity: 0.7 };
+  const pillValue = { fontSize: "16px", fontWeight: 600 };
 
-  const button = {
-    background: "#f97316", //orange for budget
-    color: "white",
-    border: "none",
-    padding: "10px",
-    borderRadius: "10px",
-    fontWeight: 700,
-    cursor: "pointer",
-    width: "100%",
-    marginTop: "10px",
-  };
-
-  const addBtn = {
-    background: "#10b981", //green for "add another"
-    color: "white",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: "8px",
-    fontWeight: 600,
-    cursor: "pointer",
-    marginTop: "8px",
+  const formStyles = {
+    display: "grid",
+    gap: "16px",
+    marginTop: "14px",
   };
 
   const formGroup = {
     display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "relative",
-    overflow: "visible",
-    zIndex: 2,
-    marginBottom: "14px",
+    flexDirection: "column",
+    gap: "6px",
   };
 
-  const summaryLine = {
-    background: "rgba(255,255,255,0.08)",
-    padding: "10px 12px",
-    borderRadius: "8px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "14px",
-    marginBottom: "10px",
+  const label = {
+    fontSize: "13px",
+    opacity: 0.9,
   };
 
-  const editBtn = {
-    background: "none",
-    border: "1px solid rgba(255,255,255,0.3)",
+  const inputStyle = {
+    background: "rgba(15,23,42,0.85)",
+    border: "1px solid rgba(148,163,184,0.6)",
     color: "white",
-    borderRadius: "6px",
-    padding: "3px 8px",
-    cursor: "pointer",
-    fontSize: "12px",
+    padding: "9px 11px",
+    borderRadius: "10px",
+    fontSize: "13px",
+    outline: "none",
   };
 
-  //Component
+  const slider = { width: "100%" };
+
+  const textarea = {
+    ...inputStyle,
+    minHeight: "70px",
+    resize: "vertical",
+  };
+
+  const primaryButton = {
+    background:
+      "linear-gradient(135deg, #f97316, #eab308, #22c55e)",
+    color: "#020617",
+    border: "none",
+    padding: "10px",
+    borderRadius: "12px",
+    fontWeight: 650,
+    cursor: "pointer",
+    width: "100%",
+    fontSize: "14px",
+    marginTop: "4px",
+    boxShadow: "0 10px 25px rgba(234,179,8,0.45)",
+  };
+
+  const messageStyle = {
+    fontSize: "13px",
+    color: "#4ade80",
+    textAlign: "center",
+    marginTop: "8px",
+  };
+
+  const hint = {
+    fontSize: "11px",
+    opacity: 0.75,
+    marginTop: "6px",
+    textAlign: "center",
+  };
+
+  const footerHint = {
+    fontSize: "10px",
+    opacity: 0.6,
+    textAlign: "right",
+    marginTop: "10px",
+  };
+
+  // ========= JSX ==========
   return (
     <div style={page}>
-      <div style={card}>
-        <h2 style={heading}>🎯 Set Budget</h2>
+      <div style={shell}>
 
-        <form onSubmit={handleSubmit} style={form}>
-          {/*Show all completed budgets as summary lines*/}
-          {budgets.slice(0, budgets.length - 1).map((budget, index) => (
-            <div key={index} style={summaryLine}>
-              <span>
-                🎯 {budget.category}: ${budget.amount} ({budget.period})
-              </span>
-              <button type="button" style={editBtn} onClick={() => handleEdit(index)}>
-                Edit
-              </button>
+        {/* Header */}
+        <div style={header}>
+
+          <div>
+            <div style={brand}>
+              <div style={glowIcon}>📊</div>
+              Smart Expense Tracker
             </div>
-          ))}
+            <div style={greeting}>Hi, {username}! 👋</div>
+          </div>
 
-          {/*Show current editable budget*/}
-          {budgets.length > 0 && (
-            <div
-              style={{
-                borderBottom: "1px solid rgba(255,255,255,0.1)",
-                paddingBottom: "20px",
-                marginBottom: "20px",
-              }}
-            >
-              {/*Category*/}
-              <div style={formGroup}>
-                <label style={label}>Category *</label>
-                {!isAddingCategory ? (
-                  <select
-                    value={budgets[budgets.length - 1].category}
-                    onChange={(e) => {
-                      if (e.target.value === "add_new") {
-                        setIsAddingCategory(true);
-                      } else {
-                        handleChange(budgets.length - 1, "category", e.target.value);
-                      }
-                    }}
-                    required
-                    style={select}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((cat, i) => (
-                      <option
-                        key={i}
-                        value={cat}
-                        style={{ backgroundColor: "#1a1a2e", color: "white" }}
-                      >
-                        {cat}
-                      </option>
-                    ))}
-                    <option value="add_new">➕ Add Custom Category</option>
-                  </select>
-                ) : (
-                  <div style={{ display: "flex", gap: "10px", flex: 1, marginLeft: "20px" }}>
-                    <input
-                      type="text"
-                      placeholder="Enter new category"
-                      value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
-                      style={{ ...input, marginLeft: 0 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCategory}
-                      style={{
-                        background: "#10b981",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "8px 12px",
-                        cursor: "pointer",
-                        color: "white",
-                        fontWeight: 600,
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                )}
-              </div>
+          <div style={badge}>
+            Budgets · {new Date().toLocaleDateString()}
+          </div>
+        </div>
 
-              {/*Amount*/}
-              <div style={formGroup}>
-                <label style={label}>Amount *</label>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  value={budgets[budgets.length - 1].amount}
-                  onChange={(e) =>
-                    handleChange(budgets.length - 1, "amount", e.target.value)
-                  }
-                  required
-                  style={input}
-                />
-              </div>
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          style={{
+            marginBottom: "14px",
+            background: "rgba(255,255,255,0.1)",
+            color: "white",
+            padding: "8px 12px",
+            border: "1px solid rgba(148,163,184,0.4)",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontSize: "13px",
+            backdropFilter: "blur(6px)",
+          }}
+        >
+          ← Back to Dashboard
+        </button>
 
-              {/*Period*/}
-              <div style={formGroup}>
-                <label style={label}>Period *</label>
-                <select
-                  value={budgets[budgets.length - 1].period}
-                  onChange={(e) =>
-                    handleChange(budgets.length - 1, "period", e.target.value)
-                  }
-                  style={select}
-                >
-                  <option value="Monthly">Monthly</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Yearly">Yearly</option>
-                </select>
-              </div>
+        {/* Card */}
+        <div style={card}>
+          <h2 style={heading}>Set Monthly Budget & Alerts</h2>
+          <p style={subheading}>
+            Define your monthly spending limit and alert threshold.
+          </p>
 
-              {/*Description*/}
-              <div style={formGroup}>
-                <label style={label}>Description</label>
-                <input
-                  type="text"
-                  placeholder="Optional"
-                  value={budgets[budgets.length - 1].description}
-                  onChange={(e) =>
-                    handleChange(budgets.length - 1, "description", e.target.value)
-                  }
-                  style={input}
-                />
+          {/* Summary Pills */}
+          <div style={pillRow}>
+            <div style={pill}>
+              <div style={pillLabel}>Monthly Limit</div>
+              <div style={pillValue}>
+                {budget.monthlyLimit
+                  ? `$${Number(budget.monthlyLimit).toFixed(2)}`
+                  : "Not set"}
               </div>
             </div>
-          )}
 
-          {/*Add another budget*/}
-          <button type="button" onClick={handleAddNew} style={addBtn}>
-            + Add Another Budget
-          </button>
+            <div style={pill}>
+              <div style={pillLabel}>Alert Threshold</div>
+              <div style={pillValue}>{budget.warningPercent}%</div>
+            </div>
+          </div>
 
-          {/*Save all*/}
-          <button type="submit" style={button}>
-            Save All Budgets
-          </button>
-        </form>
+          {/* FORM */}
+          <form onSubmit={handleSubmit} style={formStyles}>
+            {/* Monthly limit */}
+            <div style={formGroup}>
+              <label style={label}>Monthly Budget Limit (USD) *</label>
+              <input
+                type="number"
+                placeholder="e.g., 2000"
+                value={budget.monthlyLimit}
+                onChange={(e) =>
+                  handleChange("monthlyLimit", e.target.value)
+                }
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Slider */}
+            <div style={formGroup}>
+              <label style={label}>Warning Threshold (%)</label>
+              <input
+                type="range"
+                min="50"
+                max="100"
+                value={budget.warningPercent}
+                onChange={(e) =>
+                  handleChange("warningPercent", Number(e.target.value))
+                }
+                style={slider}
+              />
+              <div style={{ fontSize: "12px", opacity: 0.8 }}>
+                Alert me at <strong>{budget.warningPercent}%</strong> of my budget.
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div style={formGroup}>
+              <label style={label}>Note (optional)</label>
+              <textarea
+                placeholder="E.g., Save extra this month, avoid eating out…"
+                value={budget.note}
+                onChange={(e) => handleChange("note", e.target.value)}
+                style={textarea}
+              />
+            </div>
+
+            <button type="submit" style={primaryButton}>
+              Save Budget Settings
+            </button>
+          </form>
+
+          {message && <p style={messageStyle}>{message}</p>}
+
+          <p style={hint}>
+            These settings sync automatically with your Dashboard.
+          </p>
+
+          <div style={footerHint}>
+            Stored locally as <code>budgetSettings</code>
+          </div>
+        </div>
       </div>
     </div>
   );

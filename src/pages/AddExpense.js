@@ -1,355 +1,482 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function AddExpense() {
-  //Array to store multiple expense entries
-  const [expenses, setExpenses] = useState([
-    { amount: "", category: "", date: new Date().toISOString().split("T")[0], description: "" },
-  ]);
+  const navigate = useNavigate();
 
-  //Default categories + dynamic addition
+  const createEmptyExpense = () => ({
+    amount: "",
+    category: "",
+    date: new Date().toISOString().split("T")[0],
+    description: "",
+  });
+
+  const [expenses, setExpenses] = useState([]);
+  const [formData, setFormData] = useState(createEmptyExpense());
+  const [editingIndex, setEditingIndex] = useState(null);
+
   const [categories, setCategories] = useState([
-    "Food",
-    "Transport",
-    "Entertainment",
-    "Shopping",
-    "Bills",
-    "Healthcare",
-    "Other",
+    "Food", "Transport", "Entertainment", "Shopping",
+    "Bills", "Healthcare", "Other",
   ]);
 
-  //State for custom category input
   const [customCategory, setCustomCategory] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
 
-  //Handle input field changes
-  const handleChange = (index, field, value) => {
-    const updated = [...expenses];
-    updated[index][field] = value;
-    setExpenses(updated);
+  const [errors, setErrors] = useState({});
+  const [message, setMessage] = useState("");
+
+  // username
+  const username =
+    localStorage.getItem("username") ||
+    localStorage.getItem("email") ||
+    "User";
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("expenses")) || [];
+    setExpenses(stored);
+  }, []);
+
+  const totalAmount = expenses.reduce(
+    (sum, exp) => sum + Number(exp.amount || 0),
+    0
+  );
+
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+    setMessage("");
   };
 
-  //Add new blank expense entry
-  const handleAddNew = () => {
-    const last = expenses[expenses.length - 1];
-    if (!last.amount || !last.category) {
-      alert("Please complete the current entry before adding another.");
-      return;
-    }
-
-    setExpenses([
-      ...expenses,
-      { amount: "", category: "", date: new Date().toISOString().split("T")[0], description: "" },
-    ]);
-  };
-
-  //Save all expenses
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    //Check for incomplete entries
-    const incomplete = expenses.some((exp) => !exp.amount || !exp.category);
-    if (incomplete) {
-      alert("Please fill in all required fields before submitting.");
-      return;
-    }
-
-    //Get existing expenses from localStorage
-    const storedExpenses = JSON.parse(localStorage.getItem("expenses")) || [];
-
-    //Save all expenses
-    localStorage.setItem("expenses", JSON.stringify([...storedExpenses, ...expenses]));
-
-    alert("✅ All expense entries added successfully!");
-
-    //Reset form
-    setExpenses([
-      { amount: "", category: "", date: new Date().toISOString().split("T")[0], description: "" },
-    ]);
-  };
-
-  //Add a new custom category
   const handleAddCategory = () => {
-    if (!customCategory.trim()) {
-      alert("Please enter a category name.");
-      return;
-    }
+    if (!customCategory.trim()) return alert("Enter category");
+
     const newCat = customCategory.trim();
     if (!categories.includes(newCat)) {
-      setCategories([...categories, newCat]);
+      setCategories((prev) => [...prev, newCat]);
     }
-    //Assign it to the current expense
-    const lastIndex = expenses.length - 1;
-    handleChange(lastIndex, "category", newCat);
+
+    setFormData((prev) => ({ ...prev, category: newCat }));
     setCustomCategory("");
     setIsAddingCategory(false);
   };
 
-  //Styling
+  const validate = () => {
+    const e = {};
+    if (!formData.amount || Number(formData.amount) <= 0)
+      e.amount = "Amount must be greater than 0";
+    if (!formData.category) e.category = "Category is required";
+    return e;
+  };
+
+  const handleSubmit = (ev) => {
+    ev.preventDefault();
+    const e = validate();
+    if (Object.keys(e).length) return setErrors(e);
+
+    let updated;
+    if (editingIndex === null) {
+      updated = [...expenses, formData];
+      setMessage("✅ Expense added!");
+    } else {
+      updated = expenses.map((exp, i) =>
+        i === editingIndex ? formData : exp
+      );
+      setMessage("✅ Expense updated!");
+    }
+
+    setExpenses(updated);
+    localStorage.setItem("expenses", JSON.stringify(updated));
+    setFormData(createEmptyExpense());
+    setEditingIndex(null);
+    setErrors({});
+    setIsAddingCategory(false);
+  };
+
+  const handleEdit = (i) => {
+    setFormData(expenses[i]);
+    setEditingIndex(i);
+    setErrors({});
+    setMessage("");
+    setIsAddingCategory(false);
+  };
+
+  const handleDelete = (i) => {
+    const updated = expenses.filter((_, idx) => idx !== i);
+    setExpenses(updated);
+    localStorage.setItem("expenses", JSON.stringify(updated));
+    setMessage("🗑️ Expense deleted.");
+  };
+
+  // --- SHARED UI STYLES (matches AddIncome header) ---
+
   const page = {
     minHeight: "100vh",
-    backgroundColor: "#0a0a23",
+    background:
+      "radial-gradient(circle at top left, #1e293b 0, #020617 45%, #000 100%)",
     color: "white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
     padding: "24px",
-    fontFamily: "Arial, sans-serif",
+    display: "flex",
+    justifyContent: "center",
+    fontFamily:
+      'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
   };
 
-  const card = {
+  const shell = {
     width: "100%",
-    maxWidth: "600px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "14px",
-    padding: "24px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
-    overflow: "visible",
+    maxWidth: "1100px",
   };
 
-  const heading = {
-    fontSize: "26px",
-    marginBottom: "10px",
+  const appHeader = {
+    marginBottom: "12px",
     display: "flex",
-    justifyContent: "center",
-    gap: "8px",
+    justifyContent: "space-between",
     alignItems: "center",
   };
 
-  const form = {
-    display: "grid",
-    gap: "25px",
-    marginTop: "20px",
+  const appTitle = {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    fontSize: "22px",
+    fontWeight: 700,
   };
 
-  const label = {
-    fontSize: "14px",
-    opacity: 0.8,
-    marginBottom: "4px",
-    minWidth: "90px",
+  const appGlow = {
+    width: "46px",
+    height: "46px",
+    borderRadius: "16px",
+    background:
+      "conic-gradient(from 210deg, #22c55e, #0ea5e9, #6366f1, #22c55e)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 0 40px rgba(59,130,246,0.45)",
+    fontSize: "22px",
   };
 
-  const input = {
-    background: "rgba(255,255,255,0.1)",
-    border: "1px solid rgba(255,255,255,0.2)",
+  const appBadge = {
+    fontSize: "12px",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    border: "1px solid rgba(148,163,184,0.7)",
+  };
+
+  const backButton = {
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.15)",
     color: "white",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    marginBottom: "14px",
+    fontSize: "13px",
+  };
+
+  // ---- OLD AddExpense card styling (unchanged) ----
+  const card = {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.96), rgba(15,23,42,0.9))",
+    borderRadius: "24px",
+    border: "1px solid rgba(148,163,184,0.4)",
+    padding: "22px",
+    boxShadow: "0 30px 80px rgba(15,23,42,0.9)",
+    backdropFilter: "blur(16px)",
+  };
+
+  const summaryRow = {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "10px",
+    marginBottom: "18px",
+  };
+
+  const pillCard = {
+    borderRadius: "14px",
+    border: "1px solid rgba(148,163,184,0.35)",
     padding: "10px 12px",
+    background:
+      "radial-gradient(circle at top left, rgba(148,163,184,0.22), transparent 55%)",
+  };
+
+  const pillLabel = { opacity: 0.7, fontSize: "12px" };
+  const pillValue = { fontSize: "16px", fontWeight: 600 };
+
+  const heading = { fontSize: "18px", marginBottom: "2px" };
+  const subheading = { fontSize: "12px", opacity: 0.8 };
+
+  const summaryLine = {
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.95))",
+    padding: "9px 11px",
+    borderRadius: "12px",
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: "13px",
+    border: "1px solid rgba(148,163,184,0.4)",
+    marginBottom: "8px",
+  };
+
+  const chipAmount = { fontWeight: 600 };
+  const chipCategory = {
+    fontSize: "11px",
+    padding: "3px 8px",
+    marginLeft: "6px",
+    borderRadius: "999px",
+    background:
+      "radial-gradient(circle at top left, rgba(56,189,248,0.25), rgba(30,64,175,0.6))",
+    border: "1px solid rgba(59,130,246,0.7)",
+  };
+
+  const editBtn = {
+    background: "rgba(15,23,42,0.9)",
+    border: "1px solid rgba(129,140,248,0.8)",
+    color: "rgba(191,219,254,1)",
+    borderRadius: "8px",
+    padding: "4px 9px",
+    cursor: "pointer",
+    fontSize: "11px",
+  };
+
+  const deleteBtn = {
+    background: "rgba(30,64,175,0.15)",
+    border: "1px solid rgba(248,113,113,0.8)",
+    color: "#fb7185",
+    borderRadius: "8px",
+    padding: "4px 9px",
+    cursor: "pointer",
+    fontSize: "11px",
+  };
+
+  const inputStyle = (err) => ({
+    background: "rgba(15,23,42,0.85)",
+    border: `1px solid ${err ? "#fb7185" : "rgba(148,163,184,0.6)"}`,
+    color: "white",
+    padding: "10px",
     borderRadius: "10px",
     outline: "none",
-    marginLeft: "20px",
-    flex: 1,
-  };
+  });
 
-  const select = {
-    ...input,
-    backgroundColor: "rgba(40,40,60,1)",
-    color: "white",
-    marginLeft: "20px",
-    flex: 1,
-    zIndex: 1000,
+  const selectStyle = {
+    ...inputStyle(false),
+    background:
+      "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,64,175,0.9))",
     appearance: "none",
   };
 
-  const button = {
-    background: "#3b82f6", //blue for expense
-    color: "white",
-    border: "none",
+  const submitBtn = {
+    background:
+      "linear-gradient(135deg, #3b82f6, #6366f1, #22c55e)",
     padding: "10px",
-    borderRadius: "10px",
-    fontWeight: 700,
-    cursor: "pointer",
-    width: "100%",
-    marginTop: "10px",
-  };
-
-  const addBtn = {
-    background: "#10b981", //green add another
+    borderRadius: "12px",
     color: "white",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: "8px",
-    fontWeight: 600,
     cursor: "pointer",
     marginTop: "8px",
   };
 
-  const formGroup = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "relative",
-    overflow: "visible",
-    zIndex: 2,
-    marginBottom: "14px",
-  };
-
-  const summaryLine = {
-    background: "rgba(255,255,255,0.08)",
-    padding: "10px 12px",
-    borderRadius: "8px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "14px",
-    marginBottom: "10px",
-  };
-
-  const editBtn = {
-    background: "none",
-    border: "1px solid rgba(255,255,255,0.3)",
-    color: "white",
-    borderRadius: "6px",
-    padding: "3px 8px",
-    cursor: "pointer",
-    fontSize: "12px",
-  };
-
-  //Edit an existing collapsed expense
-  const handleEdit = (index) => {
-    const updated = [...expenses];
-    const current = updated[index];
-    updated.splice(index, 1);
-    setExpenses([...updated, current]);
-  };
-
-  //Component
   return (
     <div style={page}>
-      <div style={card}>
-        <h2 style={heading}>💳 Add Expense</h2>
+      <div style={shell}>
 
-        <form onSubmit={handleSubmit} style={form}>
-          {/*Show all completed expenses as summary lines*/}
-          {expenses.slice(0, expenses.length - 1).map((expense, index) => (
+        {/* MATCHED HEADER (SAME AS AddIncome) */}
+        <div style={appHeader}>
+          <div style={appTitle}>
+            <div style={appGlow}>💡</div>
+            <div>
+              <div>Smart Expense Tracker</div>
+              <div style={{ fontSize: "11px", opacity: 0.75 }}>
+                Track your expenses • Auto-syncs with dashboard
+              </div>
+            </div>
+          </div>
+          <div style={appBadge}>
+            {new Date().toLocaleDateString()} • v1.0
+          </div>
+        </div>
+
+        {/* HI USER */}
+        <div style={{ marginBottom: "6px", opacity: 0.9 }}>
+          Hi, <strong>{username}</strong> 👋
+        </div>
+
+        {/* BACK TO DASHBOARD */}
+        <button style={backButton} onClick={() => navigate("/dashboard")}>
+          ← Back to Dashboard
+        </button>
+
+        {/* CARD */}
+        <div style={card}>
+          {/* Summary */}
+          <div style={summaryRow}>
+            <div style={pillCard}>
+              <div style={pillLabel}>Total Tracked</div>
+              <div style={pillValue}>${totalAmount.toFixed(2)}</div>
+            </div>
+
+            <div style={pillCard}>
+              <div style={pillLabel}>Entries</div>
+              <div style={pillValue}>{expenses.length}</div>
+            </div>
+
+            <div style={pillCard}>
+              <div style={pillLabel}>Mode</div>
+              <div style={pillValue}>
+                {editingIndex === null ? "Add" : "Edit"}
+              </div>
+            </div>
+          </div>
+
+          {/* Section Title */}
+          <div style={heading}>💳 Expenses</div>
+          <p style={subheading}>
+            Log each expense with category and notes. Edit or delete anytime.
+          </p>
+
+          {/* LIST */}
+          {expenses.map((expense, index) => (
             <div key={index} style={summaryLine}>
-              <span>
-                💰 ${expense.amount} — {expense.category} ({expense.date})
-              </span>
-              <button type="button" style={editBtn} onClick={() => handleEdit(index)}>
-                Edit
-              </button>
+              <div>
+                <span style={chipAmount}>
+                  ${Number(expense.amount).toFixed(2)}
+                </span>
+                <span style={chipCategory}>{expense.category}</span>
+                <div style={{ fontSize: "11px", opacity: 0.7 }}>
+                  {expense.date}
+                  {expense.description ? ` • ${expense.description}` : ""}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button style={editBtn} onClick={() => handleEdit(index)}>
+                  Edit
+                </button>
+                <button style={deleteBtn} onClick={() => handleDelete(index)}>
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
 
-          {/*Show the last (current) editable expense*/}
-          {expenses.length > 0 && (
-            <div
-              style={{
-                borderBottom: "1px solid rgba(255,255,255,0.1)",
-                paddingBottom: "20px",
-                marginBottom: "20px",
-              }}
-            >
-              {/*Amount*/}
-              <div style={formGroup}>
-                <label style={label}>Amount *</label>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  value={expenses[expenses.length - 1].amount}
-                  onChange={(e) =>
-                    handleChange(expenses.length - 1, "amount", e.target.value)
-                  }
-                  required
-                  style={input}
-                />
+          {/* FORM */}
+          <div style={{ marginTop: "14px", borderTop: "1px dashed rgba(255,255,255,0.2)", paddingTop: "14px" }}>
+            <form onSubmit={handleSubmit} style={{ display: "grid", gap: "14px" }}>
+              {/* Amount */}
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", alignItems: "center" }}>
+                <label>Amount *</label>
+                <div>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    style={inputStyle(errors.amount)}
+                    value={formData.amount}
+                    onChange={(e) => handleChange("amount", e.target.value)}
+                  />
+                  {errors.amount && (
+                    <div style={{ color: "#fb7185", fontSize: "12px" }}>
+                      {errors.amount}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/*Category*/}
-              <div style={formGroup}>
-                <label style={label}>Category *</label>
-                {!isAddingCategory ? (
-                  <select
-                    value={expenses[expenses.length - 1].category}
-                    onChange={(e) => {
-                      if (e.target.value === "add_new") {
-                        setIsAddingCategory(true);
-                      } else {
-                        handleChange(expenses.length - 1, "category", e.target.value);
-                      }
-                    }}
-                    required
-                    style={select}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((cat, i) => (
-                      <option
-                        key={i}
-                        value={cat}
-                        style={{ backgroundColor: "#1a1a2e", color: "white" }}
-                      >
-                        {cat}
-                      </option>
-                    ))}
-                    <option value="add_new">➕ Add Custom Category</option>
-                  </select>
-                ) : (
-                  <div style={{ display: "flex", gap: "10px", flex: 1, marginLeft: "20px" }}>
-                    <input
-                      type="text"
-                      placeholder="Enter new category"
-                      value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
-                      style={{ ...input, marginLeft: 0 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCategory}
-                      style={{
-                        background: "#10b981",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "8px 12px",
-                        cursor: "pointer",
-                        color: "white",
-                        fontWeight: 600,
+              {/* Category */}
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", alignItems: "center" }}>
+                <label>Category *</label>
+                <div>
+                  {!isAddingCategory ? (
+                    <select
+                      style={selectStyle}
+                      value={formData.category}
+                      onChange={(e) => {
+                        if (e.target.value === "add_new") setIsAddingCategory(true);
+                        else handleChange("category", e.target.value);
                       }}
+                      required
                     >
-                      Add
-                    </button>
-                  </div>
-                )}
+                      <option value="">Select Category</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      <option value="add_new">➕ Add Custom Category</option>
+                    </select>
+                  ) : (
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <input
+                        type="text"
+                        placeholder="Enter category"
+                        style={inputStyle(false)}
+                        value={customCategory}
+                        onChange={(e) => setCustomCategory(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCategory}
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #22c55e, #16a34a)",
+                          padding: "8px 10px",
+                          borderRadius: "12px",
+                          color: "white",
+                          border: "none",
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+                  {errors.category && (
+                    <div style={{ color: "#fb7185", fontSize: "12px" }}>
+                      {errors.category}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/*Date*/}
-              <div style={formGroup}>
-                <label style={label}>Date</label>
+              {/* Date */}
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", alignItems: "center" }}>
+                <label>Date</label>
                 <input
                   type="date"
-                  value={expenses[expenses.length - 1].date}
-                  onChange={(e) =>
-                    handleChange(expenses.length - 1, "date", e.target.value)
-                  }
-                  style={input}
+                  style={inputStyle(false)}
+                  value={formData.date}
+                  onChange={(e) => handleChange("date", e.target.value)}
                 />
               </div>
 
-              {/*Description*/}
-              <div style={formGroup}>
-                <label style={label}>Description</label>
+              {/* Description */}
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", alignItems: "center" }}>
+                <label>Description</label>
                 <input
                   type="text"
-                  placeholder="Optional"
-                  value={expenses[expenses.length - 1].description}
-                  onChange={(e) =>
-                    handleChange(expenses.length - 1, "description", e.target.value)
-                  }
-                  style={input}
+                  placeholder="Optional note"
+                  style={inputStyle(false)}
+                  value={formData.description}
+                  onChange={(e) => handleChange("description", e.target.value)}
                 />
               </div>
+
+              <button type="submit" style={submitBtn}>
+                {editingIndex === null ? "Save Expense" : "Update Expense"}
+              </button>
+            </form>
+
+            {message && (
+              <div style={{ marginTop: "8px", color: "#4ade80", textAlign: "center" }}>
+                {message}
+              </div>
+            )}
+
+            <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "6px", textAlign: "center" }}>
+              {editingIndex === null
+                ? "Tip: Track small expenses to see patterns."
+                : "You're editing an expense."}
             </div>
-          )}
+          </div>
 
-          {/*Add another expense*/}
-          <button type="button" onClick={handleAddNew} style={addBtn}>
-            + Add Another Expense
-          </button>
-
-          {/*Save all*/}
-          <button type="submit" style={button}>
-            Save All Expenses
-          </button>
-        </form>
+          <div style={{ fontSize: "10px", opacity: 0.6, textAlign: "right", marginTop: "12px" }}>
+            Data stored locally • Syncs with Dashboard
+          </div>
+        </div>
       </div>
     </div>
   );
